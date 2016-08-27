@@ -1,0 +1,125 @@
+---
+title: "Time Series HW 1"
+author: "MG"
+date: 'Due: September 2, 2016 at 9 am'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## HW 1
+
+This will not be written in report style - just provide numbered answers to each question. Include your edited R code either in-line (using something like R-markdown - the newer option to compile directly to a Word document is quite nice for controlling formatting after compiling) or as an appendix to your homework.
+
+You will get a 5% bonus on this homework if you do this homework in a group of 2 or more, but remember that you must understand everything that is done on the assignment and are responsible for all answers. If you discuss the assignment with others but turn in separete assignments, you need to document any discussions you had and how it impacted your answers - treat this like citing your sources.
+
+For a preliminary check and to introduce some of the statistical challenges we will confront, I want you to analyze the mean monthly maximum daily temperatures in Bozeman. You can access the original file that I downloaded from NOAA's National Centers for Environmental Information (http://www.ncdc.noaa.gov/cdo-web/) here that has temperatures in degrees F in the column labeled MMXT (https://dl.dropboxusercontent.com/u/77307195/rawbozemandata.csv) for Bozeman's MSU weather station. If the code below does not work on your computer, try removing the "s" from https or just copying the link and pasting it into a browser bar. If none of that works, email me and I'll send you the csv file directly. 
+
+Note that you are getting monthly data values and that the DATE column contains year and month information concatinated together. Along with this issue, the data may not be perfect and you should check all steps carefully, not making any assumptions about what you are getting...
+
+1) Read in the data set and use R to make a correct date code that separates year and month. There are many ways to do this. If you can't figure out how to do this using functions in R, you can do this outside R (say in Excel) or by some sort of hand coding of the date information but will get a small deduction in points for bypassing the challenge of doing this in an efficient way in R.
+
+```{r,warning=F}
+
+rawbozemandata<-read.csv("https://dl.dropboxusercontent.com/u/77307195/rawbozemandata.csv",header=T)
+#View(rawbozemandata)
+#lubridate
+head(rawbozemandata)
+dim(rawbozemandata)
+
+rawt <- rawbozemandata
+rawt$temp <- rawt$MMXT
+
+rawt$year <- as.numeric(substr(as.character(rawt$DATE), 1,4))
+rawt$month <- as.numeric(substr(as.character(rawt$DATE), 5,6))
+```
+
+2) Plot the monthly mean maximum temperatures (y-axis) vs year (x-axis), labelling the axes with the name and units of each variable.
+
+Below first is shown a plot of the yearly average temperatures. It looks like generally, mean yearly temperature in Bozeman has been increasing. In 1950, only months January, Februrary, March, and April had observations, making the average yearly temperature for that year quite low.
+
+Next is what was asked for, the average monthly temperature by year is plotted.
+
+
+
+```{prob2}
+
+yearly <- NULL
+yearly$meant <- as.numeric(tapply(rawt$temp, rawt$year, mean))
+head(data.frame(yearly))
+yearly$year <- as.numeric(as.character(rownames(data.frame(yearly))))
+yearly <- data.frame(yearly)
+
+head(rawt)
+
+require(ggplot2)
+ggplot(data = yearly, aes(x=year, y=meant)) + geom_point() + theme_bw() + labs(x="Year", y = "Mean Temperature")
+
+ggplot(data = rawt, aes(x=year, y = MMXT)) + geom_point() + geom_line() + theme_bw() + labs(x="Year", y = "Mean Temperature")
+```
+
+3) Create a variable that is just the year of each observation and another for the month. Then fit a linear model with temperature as the response and year and month as explanatory variables treated correctly as either quantitative or categorical predictors. Do not consider any higher order model terms such as polynomials or interactions. For many reasons but especially for the following question, do any variable manipulations prior to fitting the model and use the general code format for your lm of: model1<-lm(y~x1+x2,data=mydatasetname).
+
+I will use year as numeric becaue there are many years and it would take up a lot of degrees of freedom to fit a model with a different parameter for each year. Month is categorical because corresponding months in different years may show trends.
+
+```{prob3}
+rawt$year <- as.numeric(as.character(rawt$year))
+model1 <- lm(temp~year+as.factor(month), data = rawt)
+
+
+```
+
+4) Install and load the effects package and run the following code to get effects (also better called termplots) of the model that you fit: plot(allEffects(model1)). Discuss the month effect plot in general.
+
+__In general, the month effect would be negatively quadratic if we treated month as continuous. Since month is categorical, summer months are hottest of average, fall and spring months have__ _medium_ __temperatures, and winter months have the coolest average temperatures.__
+
+```{prob4}
+require(effects)
+plot(allEffects(model1))
+
+```
+
+5) For the "year" model component, interpret the estimated slope coefficient and report a 95% confidence interval. Also note the size of the estimated change in the mean temperature over the entire length of the data set and report and confidence interval for that result.
+
+The average temperature is expected to increase by 5.2 degrees every 100 years for a given month with an associated 95\% confidence interval of 4.4 to 5.9 degrees every 100 years.
+
+```{prob5}
+summary(model1)
+confint.default(model1)
+
+```
+
+6) Generate a test for the month model component, write out the hypotheses, report the results (extract any pertinent numerical results from output), and write a conclusion based on these results.
+
+$H_{o}$: $\beta_{year}$ = 0
+
+$H_{a}$: $\beta_{year} \neq$ 0
+
+Based on an F statistic of 1756.6 compared to an F distribution with 11 and 1361 degrees of freedom and an associated pvalue of less than $\frac{1}{1000}$ there is strong evidence year influences temperature after accounting for month.
+
+We used both type I and type III sums of squares, and since they were not equal that means at least one month within a year doesn't have an observation, and the data are inbalanced. We went with the type III sums of squares.
+
+```{prob6}
+require(car)
+print(Anova(model1, type = "III"), signif.stars = FALSE)
+
+
+```
+
+7) Run the following code:
+
+```{prob7}
+par(mfrow=c(2,2))
+plot(model1)
+
+```
+
+It should produce four panels with residuals vs fitted, normal QQ, scale-location, and residuals vs leverage plots. Only discuss the normal QQ plot. What model assumptions does this help us assess and what does it suggest here?
+
+The normal QQ plot helps us assess whether it is reasonable to assume the errors are normally distributed. Though there are some major deviations from normality in the right tail, the sample size is large enough that the CLT will kick in making it reasonable to assume the errors are normally distributed.
+
+
+
+
