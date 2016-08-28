@@ -24,22 +24,24 @@
 
 <<setup, echo = FALSE, message = FALSE, cache = FALSE>>=
 require(knitr)
-opts_chunk$set(echo = FALSE, comment = NA, fig.align = 'center',
-               fig.width = 6.5, fig.height = 3, fig.pos = 'H',
-               size = 'footnotesize', dev = 'pdf',
-               dev.args = list(pointsize = 11))
-knit_theme$set('print')
-
-require(xtable)
-options(xtable.table.placement = 'H', width = 80, show.signif.stars = FALSE)
+opts_chunk$set(echo = FALSE, comment = NA, fig.align = "center",
+               fig.width = 6.5, fig.height = 3, fig.pos = "H",
+               size = "footnotesize", dev = "pdf",
+               dev.args = list(pointsize = 11), show.signif.stars = FALSE)
+knit_theme$set("print")
 
 require(car)
 require(ggplot2)
+theme_set(theme_bw())
 require(effects)
+
+options(width = 80, show.signif.stars = FALSE)
 @
 
 
 \section*{HW 1}
+
+Disclaimer: We originally did the assignment separately, then combined the best parts of our answers.
 
 \begin{enumerate}
 
@@ -47,52 +49,40 @@ require(effects)
 {\it Read in the data set and use R to make a correct date code that separates year and month. There are many ways to do this. If you can't figure out how to do this using functions in R, you can do this outside R (say in Excel) or by some sort of hand coding of the date information but will get a small deduction in points for bypassing the challenge of doing this in an efficient way in R.}
 
 <<one1, echo = TRUE>>=
-rawbozemandata <- read.csv('rawbozemandata.csv', header = TRUE)
-
-# A date without a day is NA, so make all these dates the first of the month.
-rawbozemandata$date2 <- as.Date(paste0(rawbozemandata$DATE, '01'), '%Y%m%d')
+rawbozemandata <- read.csv("rawbozemandata.csv", header = TRUE)
 
 head(rawbozemandata)
 dim(rawbozemandata)
 
+# Make a new data frame for tinkering.
 rawt <- rawbozemandata
-rawt$temp <- rawt$MMXT
 
-rawt$year <- as.numeric(substr(as.character(rawt$DATE), 1,4))
-rawt$month <- as.numeric(substr(as.character(rawt$DATE), 5,6))
-
-
+# The date is stored as YYYYMM. To get the year and month, we treat it as a character
+# string, get characters 1-4 for the year and characters 5-6 as the month.
+rawt$year <- as.numeric(substr(as.character(rawt$DATE), 1, 4))
+rawt$month <- as.numeric(substr(as.character(rawt$DATE), 5, 6))
 @
 \newpage
 
 \item%2
 {\it Plot the monthly mean maximum temperatures (\(y\)-axis) vs year (\(x\)-axis), labelling the axes with the name and units of each variable.}
 
-(See page~\pageref{code:two1} for code.)
+(See page~\pageref{code:two} for code.)
 
-<<two1, fig.height = 5, fig.cap = 'Monthly mean maximum temperatures (MMXT) at the MSU weather station plotted over time. The lines connect the monthly points to illustrate the periodic annual trend.'>>=
-# Start with a light grey line to connect points through years.
-#plot(MMXT ~ date2, data = rawbozemandata, type = 'l', col = 'lightgrey',
-     #main = 'MMXT over time', xlab = 'Year', ylab = expression(MMXT~(degree*F)))
-
-# Now points for the monthly observations.
-#points(MMXT ~ date2, data = rawbozemandata, pch = 19, cex = 0.5, col = 'black')
-
-yearly <- NULL
-yearly$meant <- (tapply(rawt$temp, as.character(rawt$year), mean))
-yearly$year <- as.numeric(paste(rownames(data.frame(yearly))))
-yearly <- data.frame(yearly)
-
-ggplot(data = rawt, aes(x=year, y = MMXT)) + geom_point() + geom_line() + theme_bw() + labs(x="Year A.D.", y = expression(paste("Mean Temperature in ",degree,"F")))
+<<two1, fig.height = 5, fig.cap = "Monthly mean maximum temperatures (MMXT) at the MSU weather station plotted over time. The lines connect the monthly points to illustrate the periodic annual trend.">>=
+ggplot(data = rawt, aes(x=year, y=MMXT)) + geom_line(col = "lightgrey") + geom_point() +
+  labs(x = "Year A.D.", y = expression(paste("Monthly Mean Maximum Temperature (MMXT) in ", degree, "F")))
 @
 \newpage
 
-Below is plotted the yearly mean maximum temperature by year. This plot is interesting because it more visibly shows and increasing linear trend in yearly mean temperatures over time. Notice the low average temperature in 1950. In 1950, only months January, Februrary, March, and April had observations, making the average yearly temperature for that year quite low.
-<<fig3, fig.height = 5, fig.cap = 'Yearly mean maximum temperatures (MMXT) at the MSU weather station plotted over time.'>>=
+Below is plotted the yearly mean maximum temperature by year. This plot is interesting because it more visibly shows and increasing linear trend in yearly mean temperatures over time. Notice the low average temperature in 1950. In 1950, only months January, Februrary, March, and April had observations, making the average MMXT for that year quite low.
 
+<<two2, fig.height = 5, fig.cap = "Yearly average MMXT at the MSU weather station plotted over time.">>=
+# Get the average for each year.
+yearly <- data.frame(meant = tapply(rawt$MMXT, rawt$year, mean), year = unique(rawt$year))
 
-ggplot(data = yearly, aes(x=year, y=meant)) + geom_point() + theme_bw() + labs(x="Year A.D.", y = expression(paste("Mean Temperature in ",degree,"F")))
-
+ggplot(data = yearly, aes(x=year, y=meant)) + geom_point() +
+  labs(x = "Year A.D.", y = expression(paste("Yearly Average MMXT in ", degree, "F")))
 @
 
 \pagebreak
@@ -102,26 +92,19 @@ model and use the general code format for your lm of: \verb|model1<-lm(y~x1+x2,d
 
 Time is naturally quantitative and it is best to treat year as continuous here because there are many years and it would take up a lot of degrees of freedom to fit a model with a different parameter for each year. Treating year as continuous also allows us to capture long-term linear (in this case) trends in MMXT (Figure~\ref{fig:two1} shows an increasing linear trend). The relationship between MMXT and month is not linear or simple, it is periodic, so month is treated as categorical.
 
-(See page~\pageref{code:three1} for code.)
-
-<<three1>>=
-# Get the year and month.
-rawbozemandata$year <- as.numeric(format(rawbozemandata$date2, '%Y'))
-rawbozemandata$month <- format(rawbozemandata$date2, '%B')
-
+<<three1, echo = TRUE>>=
 # Make month into a factor with levels ordered by first appearance.
-rawbozemandata$month <- factor(rawbozemandata$month,
-                               levels = unique(rawbozemandata$month))
+rawt$month <- factor(rawt$month, levels = unique(rawt$month))
 
-model1 <- lm(MMXT ~ year + month, data = rawbozemandata)
+model1 <- lm(MMXT ~ year + month, data = rawt)
 summary(model1)
 @
+\newpage
 
-\pagebreak
 \item%4
 {\it Install and load the effects package and run the following code to get effects (also better called termplots) of the model that you fit: \verb|plot(allEffects(model1))|. Discuss the month effect plot in general.}
 
-As seen in Figure~\ref{fig:four1}, mean MMXT is higher in the summer months and lower in the winter months, with fall and spring months having mild temperatures. The yearly cyclic pattern seen in the plot seems consistent with what we learned in elementary school about the seasons.
+As seen in Figure~\ref{fig:four1}, mean MMXT is higher in the summer months and lower in the winter months, with fall and spring months having mild temperatures. The yearly cyclic pattern seen in the plot seems consistent with what we learned in elementary school about the seasons in Montana.
 
 <<four1, message = FALSE, fig.cap = 'Plots showing the estimated effect of year on MMXT (averaged over months) and the estimated effect of month on MMXT (averaged over years).'>>=
 plot(allEffects(model1), rug = FALSE, cex = 0.75, rotx = 45)
@@ -131,30 +114,32 @@ plot(allEffects(model1), rug = FALSE, cex = 0.75, rotx = 45)
 {\it For the ``year'' model component, interpret the estimated slope coefficient and report a 95\% confidence interval. Also note the size of the estimated change in the mean temperature over the entire length of the data set and report and confidence interval for that result.}
 
 <<five1, results = 'asis'>>=
-slope <- coef(model1)['year']
-se <- summary(model1)$coefficients['year', 'Std. Error']
+# Make a CI for the slope.
+slope <- coef(model1)["year"]
+se <- summary(model1)$coefficients["year", "Std. Error"]
 confintyear <- slope + qt(c(0.025, 0.975), model1$df) * se
 
-nyears <- range(rawbozemandata$year) %*% c(-1, 1) # max(year) - min(year)
+# Get the number of years then make a CI for that many years by multiplying.
+nyears <- range(rawt$year) %*% c(-1, 1) # max(year) - min(year)
 confintrange <- nyears * slope + qt(c(0.025, 0.975), model1$df) * nyears * se
 
-cat('The mean MMXT is expected to increase by an estimated', signif(slope, 3)*100,
-    '\\(^\\circ\\)F every 100 years. We are 95\\% confident that the true mean',
-    'increase every 100 years is between', signif(confintyear[1], 3)*100, '\\(^\\circ\\)F and',
-    signif(confintyear[2], 3)*100, '\\(^\\circ\\)F. Over the', nyears,
-    'years for which we have data, this amounts to an expected',
-    signif(nyears * slope, 3), '\\(^\\circ\\)F increase, with a 95\\%',
-    'confidence interval of', signif(confintrange[1], 3), '\\(^\\circ\\)F to',
-    signif(confintrange[2], 3), '\\(^\\circ\\)F.\n\n')
+cat("The mean MMXT is expected to increase by an estimated", signif(slope, 3)*100,
+    "$^\\circ$F every 100 years. We are 95\\% confident that the true mean",
+    "increase every 100 years is between", signif(confintyear[1], 3)*100, "$^\\circ$F and",
+    signif(confintyear[2], 3)*100, "$^\\circ$F. Over the", nyears,
+    "years for which we have data, this amounts to an expected",
+    signif(nyears * slope, 3), "$^\\circ$F increase, with a 95\\%",
+    "confidence interval of", signif(confintrange[1], 3), "$^\\circ$F to",
+    signif(confintrange[2], 3), "$^\\circ$F.\n\n")
 @
 
-(See page~\pageref{code:five1} for the code that generated that paragraph!)
+(See page~\pageref{code:five} for the code that generated that paragraph!)
 
-\pagebreak
+\newpage
 \item%6
 {\it Generate a test for the month model component, write out the hypotheses, report the results (extract any pertinent numerical results from output), and write a conclusion based on these results.}
 
-We used both type I and type III sums of squares, and since they were not equal that means at least one month within a year doesn't have an observation, and the data are inbalanced. We went with the type III sums of squares.
+We used both type I and type III sums of squares, and since they were not equal that means at least one month within a year doesn't have an observation, and the data are unbalanced. Therefore, we went with the type III sums of squares.
 
 <<six1>>=
 anova1 <- Anova(model1, type = 3)
@@ -165,15 +150,15 @@ H_0 &\text{: all month coefficients} = 0 \\
 H_a &\text{: at least one month coefficient} \neq 0 \\
 \end{align*}
 <<six2, results = 'asis'>>=
-cat('With \\(F_{', anova1['month','Df'], ',\\: ', anova1['Residuals','Df'],
-    '} = ', signif(anova1['month','F value', 6]), '\\) (\\(\\text{p-value} ',
-    ifelse(anova1['month','Pr(>F)'] < 0.0001, '< 0.0001',
-           sprintf('= %.4f', anova1['month','Pr(>F)'])),
-    '\\)) there is very strong evidence that, within a year,
-the true mean MMXT differs by month.')
+# Get the pertinent stuff out of the anova object and write a conclusion.
+cat("With $F_{", anova1["month","Df"], ",\\: ", anova1["Residuals","Df"],
+    "} = ", signif(anova1["month","F value", 6]), "$ ($\\text{p-value} ",
+    ifelse(anova1["month","Pr(>F)"] < 0.0001, "< 0.0001",
+           sprintf("= %.4f", anova1["month","Pr(>F)"])),
+    "$) there is very strong evidence that, within a year, the true mean MMXT differs by month.")
 @
 
-(See page~\pageref{code:six2} for code.)
+(See page~\pageref{code:six} for code.)
 
 \item%7
 {\it Run the following code:}
@@ -183,9 +168,9 @@ plot(model1)
 @
 {\it It should produce four panels with residuals vs fitted, normal Q-Q, scale-location, and residuals vs leverage plots. Only discuss the normal Q-Q plot. What model assumptions does this help us assess and what does it suggest here?}
 
-%Chris Barbour told me to always use \texttt{add.smooth=FALSE}!
+%Chris Barbour says to always use \texttt{add.smooth=FALSE}!
 
-The normal Q-Q plot shows the standardized residuals plotted against the standard normal quantiles, so if the residuals follow a normal distribution the plot will show a linear relationship. The normal QQ plot helps us assess whether it is reasonable to assume the errors are normally distributed, which we need to make inference, not to ensure the parameter estimates are BLUE. Though there are some major deviations from normality in the right tail, the sample size is large enough that it is reasonable to assume the errors are normally distributed. 
+The normal Q-Q plot shows the standardized residuals plotted against the standard normal quantiles, so if the residuals follow a normal distribution the plot will show a linear relationship. The normal Q-Q plot helps us assess whether it is reasonable to assume the errors are normally distributed, which we need to make inference, not to ensure the parameter estimates are BLUE. Though there are some major deviations from normality in the right tail, the sample size is large enough that it is reasonable to use the normal distribution.
 
 <<seven1, fig.height = 6.5, fig.cap = 'The four standard linear model diagnostic plots.'>>=
 @
@@ -199,40 +184,41 @@ The normal Q-Q plot shows the standardized residuals plotted against the standar
 \begin{enumerate}
 
 \item%1
-\label{code:one1}
+\label{code:one}
 <<one1, eval = FALSE, echo = TRUE>>=
 @
 
 \item%2
-\label{code:two1}
+\label{code:two}
 <<two1, eval = FALSE, echo = TRUE>>=
+@
+<<two2, eval = FALSE, echo = TRUE>>=
 @
 
 \item%3
-\label{code:three1}
+\label{code:three}
 <<three1, eval = FALSE, echo = TRUE>>=
 @
 
 \item%4
-\label{code:four1}
+\label{code:four}
 <<four1, eval = FALSE, echo = TRUE>>=
 @
 
 \item%5
-\label{code:five1}
+\label{code:five}
 <<five1, eval = FALSE, echo = TRUE>>=
 @
 
 \item%6
-\label{code:six1}
+\label{code:six}
 <<six1, eval = FALSE, echo = TRUE>>=
 @
-\label{code:six2}
 <<six2, eval = FALSE, echo = TRUE>>=
 @
 
 \item%7
-\label{code:seven1}
+\label{code:seven}
 <<seven1, eval = FALSE, echo = TRUE>>=
 @
 
