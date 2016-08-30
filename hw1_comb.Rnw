@@ -41,7 +41,7 @@ options(width = 80, show.signif.stars = FALSE)
 
 \section*{HW 1}
 
-Disclaimer: We originally did the assignment separately, then combined the best parts of our answers.
+Disclaimer: We originally did the assignment separately, then combined the best parts of our answers. As a result, Kenny's code is mostly used. If you would like Andrea to provide her separately, she will.
 
 \begin{enumerate}
 
@@ -90,7 +90,7 @@ ggplot(data = yearly, aes(x=year, y=meant)) + geom_point() +
 {\it Create a variable that is just the year of each observation and another for the month. Then fit a linear model with temperature as the response and year and month as explanatory variables treated correctly as either quantitative or categorical predictors. Do not consider any higher order model terms such as polynomials or interactions. For many reasons but especially for the following question, do any variable manipulations prior to fitting the
 model and use the general code format for your lm of: \verb|model1<-lm(y~x1+x2,data=mydatasetname)|.}
 
-Time is naturally quantitative and it is best to treat year as continuous here because there are many years and it would take up a lot of degrees of freedom to fit a model with a different parameter for each year. Treating year as continuous also allows us to capture long-term linear (in this case) trends in MMXT (Figure~\ref{fig:two1} shows an increasing linear trend). The relationship between MMXT and month is not linear or simple, it is periodic, so month is treated as categorical.
+Time is naturally quantitative and it is best to treat year as continuous here because there are many years and it would take up a lot of degrees of freedom to fit a model with a different parameter for each year. Treating year as continuous also allows us to capture long-term linear (in this case) trends in average MMXT (Figure~\ref{fig:two1} shows an increasing linear trend). The relationship between average MMXT and month is not linear or simple, it is periodic, so month is treated as categorical.
 
 <<three1, echo = TRUE>>=
 # Make month into a factor with levels ordered by first appearance.
